@@ -2,6 +2,7 @@
 import PackageDescription
 let package = Package(
     name: "CalculatorCore",
+    platforms: [.macOS(.v13), .iOS(.v16)],
     products: [.library(name: "CalculatorCore", targets: ["CalculatorCore"])],
     targets: [
         .target(name: "CalculatorCore", path: "Calculator", exclude: ["CalculatorApp.swift", "ContentView.swift"], sources: ["Calculator.swift"]),
