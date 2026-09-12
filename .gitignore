@@ -1,0 +1,7 @@
+report/
+web/*
+!web/calculator.js
+native/output/
+native/DerivedDataSimulator/
+__pycache__/
+*.pyc

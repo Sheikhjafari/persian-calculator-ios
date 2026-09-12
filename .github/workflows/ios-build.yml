@@ -1,0 +1,68 @@
+name: Build iPhone calculator
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'native/**'
+      - 'web/calculator.js'
+      - '.github/workflows/ios-build.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: xcodebuild -version
+      - name: Verify arithmetic against web reference
+        run: swift test --package-path native
+      - name: Build unsigned iPhone app
+        run: |
+          set -o pipefail
+          mkdir -p native/output
+          xcodebuild -project native/Calculator.xcodeproj -scheme Calculator \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath native/DerivedData \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build \
+            2>&1 | tee native/output/device-build.log
+      - name: Package and verify IPA
+        run: python3 native/scripts/package-ipa.py
+      - name: Build simulator app
+        run: |
+          set -o pipefail
+          xcodebuild -project native/Calculator.xcodeproj -scheme Calculator \
+            -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath native/DerivedDataSimulator \
+            CODE_SIGNING_ALLOWED=NO build \
+            2>&1 | tee native/output/simulator-build.log
+      - name: Launch simulator and capture screen
+        run: python3 native/scripts/simulator-preview.py
+      - name: Upload IPA and preview
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Calculator-iPhone-unsigned
+          path: |
+            native/output/Calculator-unsigned.ipa
+            native/output/SHA256SUMS
+            native/output/build-info.json
+            native/output/simulator.png
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Calculator-build-logs
+          path: native/output/*.log
+          if-no-files-found: ignore
+          retention-days: 7
