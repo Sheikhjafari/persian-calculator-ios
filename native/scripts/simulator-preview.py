@@ -7,7 +7,7 @@ import time
 
 native = Path(__file__).resolve().parents[1]
 def run(*args):
-    return subprocess.check_output(['xcrun', 'simctl', *args], text=True).strip()
+    return subprocess.check_output(['xcrun', 'simctl', *args], text=True, timeout=360).strip()
 devices = json.loads(run('list', 'devices', 'available', '--json'))['devices']
 candidates = [(runtime, device) for runtime, group in devices.items()
               if 'iOS' in runtime for device in group
